@@ -1,6 +1,9 @@
 package state
 
-import "testing"
+import (
+	"path/filepath"
+	"testing"
+)
 
 func TestScriptDisplayNamesSourceAndTiming(t *testing.T) {
 	tests := []struct {
@@ -25,21 +28,31 @@ func TestScriptDisplayNamesSourceAndTiming(t *testing.T) {
 	}
 }
 
+// parseStatus cleans every path it reads, so metadata keys must be built with
+// filepath rather than as literal slash-separated strings — otherwise the
+// lookup silently misses on Windows and the assertions below pass or fail for
+// the wrong reason.
+func parseOneEntry(t *testing.T, code string, segments []string, meta func(target string) sourceMetadata) Entry {
+	t.Helper()
+	dest := t.TempDir()
+	target := filepath.Join(append([]string{dest}, segments...)...)
+	entries := parseStatus(code+" "+target+"\n", dest, meta(target))
+	if len(entries) != 1 {
+		t.Fatalf("got %d entries, want 1", len(entries))
+	}
+	return entries[0]
+}
+
 // A pending script must not be listed at its nominal destination path, which
 // is never written. See the "~/50-quake-terminal-settings.sh" case that
 // prompted this: the file does not and will not exist.
 func TestParseStatusRenamesScriptsToTheirSource(t *testing.T) {
-	meta := sourceMetadata{
-		sourceRelative: map[string]string{
-			"/home/test/50-quake.sh": "run_after_50-quake.sh.tmpl",
-		},
-		encrypted: map[string]bool{},
-	}
-	entries := parseStatus(" R /home/test/50-quake.sh\n", "/home/test", meta)
-	if len(entries) != 1 {
-		t.Fatalf("got %d entries, want 1", len(entries))
-	}
-	entry := entries[0]
+	entry := parseOneEntry(t, " R", []string{"50-quake.sh"}, func(target string) sourceMetadata {
+		return sourceMetadata{
+			sourceRelative: map[string]string{target: "run_after_50-quake.sh.tmpl"},
+			encrypted:      map[string]bool{},
+		}
+	})
 	if entry.DisplayPath != "50-quake.sh" {
 		t.Errorf("displayPath = %q, want %q (not a ~/ home path)", entry.DisplayPath, "50-quake.sh")
 	}
@@ -54,19 +67,17 @@ func TestParseStatusRenamesScriptsToTheirSource(t *testing.T) {
 // chezmoi's own encryption is authoritative, so it must mask a file whose name
 // gives no hint that it holds secrets.
 func TestParseStatusMasksEncryptedEntriesRegardlessOfName(t *testing.T) {
-	meta := sourceMetadata{
-		sourceRelative: map[string]string{},
-		encrypted:      map[string]bool{"/home/test/.config/app/boring.txt": true},
-	}
-	entries := parseStatus(" M /home/test/.config/app/boring.txt\n", "/home/test", meta)
-	if len(entries) != 1 {
-		t.Fatalf("got %d entries, want 1", len(entries))
-	}
-	if !entries[0].Sensitive {
+	entry := parseOneEntry(t, " M", []string{".config", "app", "boring.txt"}, func(target string) sourceMetadata {
+		return sourceMetadata{
+			sourceRelative: map[string]string{},
+			encrypted:      map[string]bool{target: true},
+		}
+	})
+	if !entry.Sensitive {
 		t.Fatal("an encrypted entry was not masked")
 	}
-	if entries[0].SensitiveReason != "chezmoi encrypts this file" {
-		t.Errorf("sensitiveReason = %q", entries[0].SensitiveReason)
+	if entry.SensitiveReason != "chezmoi encrypts this file" {
+		t.Errorf("sensitiveReason = %q", entry.SensitiveReason)
 	}
 }
 
@@ -74,17 +85,19 @@ func TestParseStatusMasksEncryptedEntriesRegardlessOfName(t *testing.T) {
 // it as one masked 14 of 49 queued entries on the repository this was
 // developed against, including gtk bookmarks and fcitx5 keyboard settings.
 func TestParseStatusDoesNotMaskOnPrivateSourceAttribute(t *testing.T) {
-	meta := sourceMetadata{
-		sourceRelative: map[string]string{
-			"/home/test/.config/fcitx5/conf/mozc.conf": "dot_config/private_fcitx5/private_conf/private_mozc.conf",
-		},
-		encrypted: map[string]bool{},
+	source := filepath.Join("dot_config", "private_fcitx5", "private_conf", "private_mozc.conf")
+	entry := parseOneEntry(t, " M", []string{".config", "fcitx5", "conf", "mozc.conf"}, func(target string) sourceMetadata {
+		return sourceMetadata{
+			sourceRelative: map[string]string{target: source},
+			encrypted:      map[string]bool{},
+		}
+	})
+	// Guard against the assertion below passing merely because the metadata
+	// lookup missed, which is what made this test portable-fragile.
+	if entry.SourcePath != source {
+		t.Fatalf("metadata lookup missed: sourcePath = %q, want %q", entry.SourcePath, source)
 	}
-	entries := parseStatus(" M /home/test/.config/fcitx5/conf/mozc.conf\n", "/home/test", meta)
-	if len(entries) != 1 {
-		t.Fatalf("got %d entries, want 1", len(entries))
-	}
-	if entries[0].Sensitive {
+	if entry.Sensitive {
 		t.Error("a private_ source attribute must not mask an ordinary config file")
 	}
 }
