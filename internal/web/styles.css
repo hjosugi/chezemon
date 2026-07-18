@@ -992,6 +992,35 @@ h1 span {
   overflow-wrap: anywhere;
 }
 
+.diff-line {
+  display: block;
+  padding: 0 6px;
+  border-left: 2px solid transparent;
+}
+
+.diff-line.diff-meta {
+  color: #7b8279;
+}
+
+.diff-line.diff-hunk {
+  margin-top: 6px;
+  color: #8ab4f8;
+  background: rgba(138, 180, 248, 0.08);
+  border-left-color: rgba(138, 180, 248, 0.5);
+}
+
+.diff-line.diff-add {
+  color: #b7f0a8;
+  background: rgba(126, 231, 135, 0.1);
+  border-left-color: rgba(126, 231, 135, 0.55);
+}
+
+.diff-line.diff-del {
+  color: #f7b0ab;
+  background: rgba(248, 113, 113, 0.1);
+  border-left-color: rgba(248, 113, 113, 0.55);
+}
+
 .hidden {
   display: none !important;
 }

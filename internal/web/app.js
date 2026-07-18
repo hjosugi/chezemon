@@ -27,6 +27,34 @@ function escapeHTML(value) {
     .replaceAll("'", "&#039;");
 }
 
+function diffLineClass(line) {
+  if (
+    line.startsWith("diff ") ||
+    line.startsWith("index ") ||
+    line.startsWith("--- ") ||
+    line.startsWith("+++ ") ||
+    line.startsWith("new file") ||
+    line.startsWith("deleted file") ||
+    line.startsWith("old mode") ||
+    line.startsWith("new mode") ||
+    line.startsWith("rename ") ||
+    line.startsWith("similarity ")
+  ) {
+    return "diff-meta";
+  }
+  if (line.startsWith("@@")) return "diff-hunk";
+  if (line.startsWith("+")) return "diff-add";
+  if (line.startsWith("-")) return "diff-del";
+  return "";
+}
+
+function renderDiff(target, content) {
+  target.innerHTML = content
+    .split("\n")
+    .map((line) => `<span class="diff-line ${diffLineClass(line)}">${escapeHTML(line)}</span>`)
+    .join("");
+}
+
 function riskIcon(risk) {
   if (risk === "critical") return "!";
   if (risk === "high") return "▲";
@@ -130,7 +158,11 @@ async function loadDiff(entry, reveal) {
       return;
     }
     revealButton.classList.add("hidden");
-    output.textContent = diff.content || "No textual diff is available for this entry.";
+    if (diff.content) {
+      renderDiff(output, diff.content);
+    } else {
+      output.textContent = "No textual diff is available for this entry.";
+    }
   } catch (error) {
     output.textContent = `Could not render diff:\n${error.message}`;
   }
