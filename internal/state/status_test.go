@@ -6,7 +6,7 @@ import (
 
 func TestParseStatusAndCounts(t *testing.T) {
 	output := "MM /home/test/.config/app.json\n M /home/test/.bashrc\n R /home/test/setup.sh\n A /home/test/.new\n D /home/test/.old\n"
-	entries := parseStatus(output, "/home/test")
+	entries := parseStatus(output, "/home/test", sourceMetadata{})
 	if len(entries) != 5 {
 		t.Fatalf("got %d entries, want 5", len(entries))
 	}
@@ -57,8 +57,9 @@ func TestBuildWorkflowChoosesFirstOutstandingStep(t *testing.T) {
 	entries := parseStatus(
 		"MM /home/test/.config/app.json\n R /home/test/setup.sh\n M /home/test/.bashrc\n",
 		"/home/test",
+		sourceMetadata{},
 	)
-	workflow := buildWorkflow(entries, GitState{Available: true, Clean: true})
+	workflow := buildWorkflow(countEntries(entries), GitState{Available: true, Clean: true})
 
 	if workflow.Phase != "protect-work" || workflow.CurrentStep != 1 {
 		t.Fatalf("unexpected phase: %#v", workflow)
@@ -72,8 +73,8 @@ func TestBuildWorkflowChoosesFirstOutstandingStep(t *testing.T) {
 }
 
 func TestBuildWorkflowSynchronized(t *testing.T) {
-	workflow := buildWorkflow(nil, GitState{Available: true, Clean: true})
-	if workflow.Phase != "synchronized" || workflow.Completed != workflow.Total {
+	workflow := buildWorkflow(Counts{}, GitState{Available: true, Clean: true})
+	if workflow.Phase != "synchronized" || workflow.Clear != workflow.Total {
 		t.Fatalf("unexpected synchronized workflow: %#v", workflow)
 	}
 }

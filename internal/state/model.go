@@ -20,12 +20,15 @@ type Entry struct {
 	Code              string `json:"code"`
 	Path              string `json:"path"`
 	DisplayPath       string `json:"displayPath"`
+	SourcePath        string `json:"sourcePath,omitempty"`
 	Kind              string `json:"kind"`
 	Label             string `json:"label"`
 	Risk              string `json:"risk"`
 	Explanation       string `json:"explanation"`
 	RecommendedAction string `json:"recommendedAction"`
+	ScriptTiming      string `json:"scriptTiming,omitempty"`
 	Sensitive         bool   `json:"sensitive"`
+	SensitiveReason   string `json:"sensitiveReason,omitempty"`
 }
 
 type Counts struct {
@@ -70,11 +73,15 @@ type Notice struct {
 }
 
 type Workflow struct {
-	Phase       string         `json:"phase"`
-	PhaseLabel  string         `json:"phaseLabel"`
-	Summary     string         `json:"summary"`
-	Completed   int            `json:"completed"`
-	Total       int            `json:"total"`
+	Phase      string `json:"phase"`
+	PhaseLabel string `json:"phaseLabel"`
+	Summary    string `json:"summary"`
+	// Clear counts stages with nothing outstanding. It is not a measure of
+	// work the reader has done — see stepClear.
+	Clear int `json:"clear"`
+	Total int `json:"total"`
+	// Outstanding is the number of items still queued across all stages.
+	Outstanding int            `json:"outstanding"`
 	CurrentStep int            `json:"currentStep"`
 	Steps       []WorkflowStep `json:"steps"`
 }

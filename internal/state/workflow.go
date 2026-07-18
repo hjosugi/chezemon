@@ -3,13 +3,16 @@ package state
 import "fmt"
 
 const (
-	stepDone    = "done"
+	// stepClear means the stage has nothing outstanding. It deliberately does
+	// not mean "the user finished this stage": Chezemon has no history, so a
+	// stage that was never started looks identical to one that was resolved.
+	// The UI must not present it as progress the reader earned.
+	stepClear   = "clear"
 	stepCurrent = "current"
 	stepQueued  = "queued"
 )
 
-func buildWorkflow(entries []Entry, git GitState) Workflow {
-	counts := countEntries(entries)
+func buildWorkflow(counts Counts, git GitState) Workflow {
 	liveOnly := max(0, counts.LocalChanges-counts.Critical)
 	pendingOnly := max(0, counts.Pending-counts.Critical)
 	gitChanges := len(git.Changes)
@@ -61,18 +64,20 @@ func buildWorkflow(entries []Entry, git GitState) Workflow {
 	}
 
 	current := -1
-	completed := 0
+	clear, outstanding := 0, 0
 	for index := range steps {
 		steps[index].Number = index + 1
 		switch {
 		case steps[index].Count == 0:
-			steps[index].State = stepDone
-			completed++
+			steps[index].State = stepClear
+			clear++
 		case current == -1:
 			steps[index].State = stepCurrent
 			current = index
+			outstanding += steps[index].Count
 		default:
 			steps[index].State = stepQueued
+			outstanding += steps[index].Count
 		}
 	}
 
@@ -81,8 +86,9 @@ func buildWorkflow(entries []Entry, git GitState) Workflow {
 			Phase:       "synchronized",
 			PhaseLabel:  "Synchronized",
 			Summary:     "No chezmoi drift or source Git work is currently visible.",
-			Completed:   len(steps),
+			Clear:       len(steps),
 			Total:       len(steps),
+			Outstanding: 0,
 			CurrentStep: 0,
 			Steps:       steps,
 		}
@@ -93,8 +99,9 @@ func buildWorkflow(entries []Entry, git GitState) Workflow {
 		Phase:       phase,
 		PhaseLabel:  label,
 		Summary:     summary,
-		Completed:   completed,
+		Clear:       clear,
 		Total:       len(steps),
+		Outstanding: outstanding,
 		CurrentStep: current + 1,
 		Steps:       steps,
 	}
