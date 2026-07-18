@@ -13,7 +13,7 @@ func parseStatus(output string, destDir string, meta sourceMetadata) []Entry {
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
 		line := scanner.Text()
-		if len(line) < 3 {
+		if len(line) < 3 || !isStatusLine(line) {
 			continue
 		}
 		code := line[:2]
@@ -73,6 +73,27 @@ func parseStatus(output string, destDir string, meta sourceMetadata) []Entry {
 		return entries[i].DisplayPath < entries[j].DisplayPath
 	})
 	return entries
+}
+
+// isStatusLine reports whether a line has the "XY <path>" shape chezmoi uses,
+// where each of X and Y is a space or an uppercase status letter.
+//
+// This is defence in depth against non-status text reaching the parser. Prose
+// such as "chezmoi: warning: ..." would otherwise be read as code "ch" with a
+// path of "ezmoi: warning: ...", and two non-space characters classify as a
+// critical divergence — the loudest thing the queue can show. Unrecognised
+// uppercase codes still pass through and land in the "unknown" classification,
+// so a future chezmoi status code is reported rather than silently dropped.
+func isStatusLine(line string) bool {
+	if len(line) < 3 || line[2] != ' ' {
+		return false
+	}
+	for _, char := range line[:2] {
+		if char != ' ' && (char < 'A' || char > 'Z') {
+			return false
+		}
+	}
+	return true
 }
 
 // classification is the plain-language reading of a two-character chezmoi
