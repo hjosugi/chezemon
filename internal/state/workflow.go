@@ -21,6 +21,7 @@ func buildWorkflow(counts Counts, git GitState) Workflow {
 	steps := []WorkflowStep{
 		{
 			ID:          "divergence",
+			ShortTitle:  "Diverged",
 			Title:       "Protect changes made on both sides",
 			Description: "Compare source, rendered target, and live content. Merge deliberately before apply or re-add.",
 			Count:       counts.Critical,
@@ -28,6 +29,7 @@ func buildWorkflow(counts Counts, git GitState) Workflow {
 		},
 		{
 			ID:          "live",
+			ShortTitle:  "Live-only",
 			Title:       "Decide what to do with live-only changes",
 			Description: "Keep the live edit, restore the managed version, or move the useful part into source.",
 			Count:       liveOnly,
@@ -35,6 +37,7 @@ func buildWorkflow(counts Counts, git GitState) Workflow {
 		},
 		{
 			ID:          "git",
+			ShortTitle:  "Source Git",
 			Title:       "Stabilize the source Git working tree",
 			Description: "Review and record intentional source edits so the desired state is not ambiguous.",
 			Count:       gitChanges,
@@ -42,6 +45,7 @@ func buildWorkflow(counts Counts, git GitState) Workflow {
 		},
 		{
 			ID:          "upstream",
+			ShortTitle:  "Upstream",
 			Title:       "Reconcile the source with its upstream",
 			Description: "Pull behind commits carefully and push intentional local commits when the source is ready.",
 			Count:       upstreamChanges,
@@ -49,6 +53,7 @@ func buildWorkflow(counts Counts, git GitState) Workflow {
 		},
 		{
 			ID:          "scripts",
+			ShortTitle:  "Scripts",
 			Title:       "Inspect scripts and side effects",
 			Description: "Check why each script will run, including network, package, and privilege effects.",
 			Count:       counts.Scripts,
@@ -56,6 +61,7 @@ func buildWorkflow(counts Counts, git GitState) Workflow {
 		},
 		{
 			ID:          "pending",
+			ShortTitle:  "Pending",
 			Title:       "Review and apply desired file changes",
 			Description: "Preview creates, updates, and deletes, then apply the smallest safe target set.",
 			Count:       pendingOnly,

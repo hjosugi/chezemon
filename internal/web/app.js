@@ -196,81 +196,93 @@ function renderWorkflow(workflow) {
   $("#workflow-phase").textContent = workflow.phaseLabel;
   $("#workflow-title").textContent =
     workflow.currentStep > 0
-      ? `Stage ${workflow.currentStep}: ${workflow.steps[workflow.currentStep - 1].title}`
+      ? workflow.steps[workflow.currentStep - 1].title
       : "Everything visible is synchronized";
   $("#workflow-summary").textContent = workflow.summary;
   $("#workflow-clear").textContent = workflow.clear;
   $("#workflow-total").textContent = workflow.total;
-  $("#workflow-outstanding").textContent = workflow.outstanding
-    ? `${workflow.outstanding} item${workflow.outstanding === 1 ? "" : "s"} outstanding`
-    : "Nothing outstanding";
-  // The bar tracks stages with nothing left in them. Chezemon keeps no
-  // history, so this is a picture of the current state, not of work done.
-  const cleared = workflow.total ? Math.round((workflow.clear / workflow.total) * 100) : 100;
-  $("#workflow-progress-bar").style.width = `${cleared}%`;
+  $("#workflow-outstanding").textContent = workflow.outstanding;
 
+  // Long per-stage prose lives in the tooltip: on a dashboard the count and
+  // the state are what get scanned, not the paragraph.
   const container = $("#workflow-steps");
   container.innerHTML = workflow.steps
     .map(
       (step) => `
-        <button class="workflow-step ${escapeHTML(step.state)}"
+        <button class="step ${escapeHTML(step.state)}"
                 data-filter="${escapeHTML(step.queueFilter || "")}"
+                title="${escapeHTML(`${step.title} — ${step.description}`)}"
                 ${step.state === "clear" ? "disabled" : ""}>
           <span class="step-marker">${step.state === "clear" ? "–" : step.number}</span>
-          <span class="step-copy">
-            <strong>${escapeHTML(step.title)}</strong>
-            <small>${escapeHTML(step.description)}</small>
-          </span>
-          <span class="step-state">${step.state === "current" ? "Now" : step.state === "queued" ? "Later" : "Nothing to do"}</span>
-          ${step.count ? `<span class="step-count">${step.count}</span>` : ""}
+          <span class="step-label">${escapeHTML(step.shortTitle || step.title)}</span>
+          <span class="step-count">${step.count}</span>
         </button>`,
     )
     .join("");
 
-  container.querySelectorAll(".workflow-step:not(:disabled)").forEach((button) => {
+  container.querySelectorAll(".step:not(:disabled)").forEach((button) => {
     button.addEventListener("click", () => {
       const filter = button.dataset.filter;
       if (filter === "git") {
-        $(".git-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+        const details = $("#git-details");
+        details.open = true;
+        details.scrollIntoView({ behavior: "smooth", block: "start" });
         return;
       }
       setQueueFilter(filter || "all");
-      $(".workspace").scrollIntoView({ behavior: "smooth", block: "start" });
     });
   });
 }
 
+function setStage(id, value, tone) {
+  const node = $(id);
+  node.textContent = value;
+  node.className = `stage-value${tone ? ` ${tone}` : ""}`;
+}
+
 function renderSummary(snapshot) {
-  $("#critical-count").textContent = snapshot.counts.critical;
-  $("#pending-count").textContent = snapshot.counts.pending;
-  $("#script-count").textContent = snapshot.counts.scripts;
-  $("#git-count").textContent = snapshot.git.changes?.length ?? 0;
-  $("#upstream-state").textContent = !snapshot.git.available
-    ? "Not available"
-    : !snapshot.git.hasUpstream
-      ? "Not configured"
-      : snapshot.git.ahead || snapshot.git.behind
-        ? `↑${snapshot.git.ahead} ↓${snapshot.git.behind}`
-        : "Aligned · last known";
-  $("#git-state").textContent = snapshot.git.available
-    ? snapshot.git.clean
-      ? "Clean"
-      : `${snapshot.git.changes.length} changed`
-    : "Not available";
-  $("#target-state").textContent = `${snapshot.counts.pending} pending`;
-  $("#home-state").textContent = snapshot.counts.critical
-    ? `${snapshot.counts.critical} diverged`
-    : snapshot.counts.total
-      ? `${snapshot.counts.total} drifted`
-      : "Synchronized";
+  const { counts, git } = snapshot;
+
+  setStage(
+    "#upstream-state",
+    !git.available
+      ? "n/a"
+      : !git.hasUpstream
+        ? "no upstream"
+        : git.ahead || git.behind
+          ? `↑${git.ahead} ↓${git.behind}`
+          : "aligned",
+    git.available && git.hasUpstream && (git.ahead || git.behind) ? "warn" : "",
+  );
+  setStage(
+    "#git-state",
+    !git.available ? "n/a" : git.clean ? "clean" : `${git.changes.length} changed`,
+    git.available && !git.clean ? "warn" : "",
+  );
+  setStage("#target-state", counts.pending ? `${counts.pending} pending` : "clean", counts.pending ? "warn" : "");
+  setStage(
+    "#home-state",
+    counts.critical
+      ? `${counts.critical} diverged`
+      : counts.total
+        ? `${counts.total} drifted`
+        : "in sync",
+    counts.critical ? "bad" : counts.total ? "warn" : "",
+  );
+
   $("#timestamp").textContent =
-    `${new Date(snapshot.generatedAt).toLocaleTimeString()} · ${snapshot.durationMs} ms`;
+    `${new Date(snapshot.generatedAt).toLocaleTimeString()} · ${snapshot.durationMs}ms`;
 }
 
 function renderGit(git) {
   $("#branch-pill").textContent = git.available
     ? `${git.branch || "detached"}${git.hasUpstream ? ` · ↑${git.ahead} ↓${git.behind}` : ""}`
     : "not a Git tree";
+  $("#git-summary-hint").textContent = git.available
+    ? git.clean
+      ? "working tree clean"
+      : `${git.changes.length} working-tree change${git.changes.length === 1 ? "" : "s"}`
+    : git.error || "unavailable";
   const changes = $("#git-changes");
   if (!git.available) {
     changes.innerHTML = `<p class="muted">${escapeHTML(git.error || "Git is unavailable.")}</p>`;
@@ -315,7 +327,7 @@ async function refresh(force = false) {
       if (updated) selectEntry(updated);
       else {
         state.selected = null;
-        detail.innerHTML = `<div class="detail-empty"><div class="detail-orbit"><span></span></div><h3>Queue changed</h3><p>Select another entry to continue.</p></div>`;
+        detail.innerHTML = `<div class="detail-empty"><h3>Queue changed</h3><p>Select another entry to continue.</p></div>`;
       }
     }
   } catch (error) {

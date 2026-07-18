@@ -90,6 +90,7 @@ type WorkflowStep struct {
 	Number      int    `json:"number"`
 	ID          string `json:"id"`
 	Title       string `json:"title"`
+	ShortTitle  string `json:"shortTitle"`
 	Description string `json:"description"`
 	State       string `json:"state"`
 	Count       int    `json:"count"`
