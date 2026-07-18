@@ -115,7 +115,12 @@ func isSensitivePath(path string) bool {
 	segments := strings.Split(lower, "/")
 	for _, segment := range segments {
 		switch segment {
-		case ".ssh", ".gnupg", ".aws", ".kube", ".password-store":
+		// ".git-credentials" and any "credentials" file are already covered
+		// by the "credential" substring rule below.
+		case ".ssh", ".gnupg", ".aws", ".kube", ".password-store",
+			".docker", ".age", ".pki",
+			".netrc", "netrc", ".npmrc", "npmrc", ".pypirc", "pypirc",
+			"hosts.yml":
 			return true
 		}
 		if segment == ".env" || strings.HasPrefix(segment, ".env.") {
@@ -128,6 +133,13 @@ func isSensitivePath(path string) bool {
 	}
 	for _, word := range sensitiveWords {
 		if strings.Contains(lower, word) {
+			return true
+		}
+	}
+	// Key material is identified by extension rather than substring so that
+	// names like "keybindings.json" are not masked as secrets.
+	for _, suffix := range []string{".pem", ".key", ".p12", ".pfx", ".jks", ".keystore"} {
+		if strings.HasSuffix(lower, suffix) {
 			return true
 		}
 	}

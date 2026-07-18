@@ -26,6 +26,15 @@ func TestSensitivePaths(t *testing.T) {
 		"/home/me/project/.env.production":      true,
 		"/home/me/.config/fish/config.fish":     false,
 		"/home/me/.config/app/credentials.json": true,
+		"/home/me/.netrc":                       true,
+		"/home/me/.npmrc":                       true,
+		"/home/me/.docker/config.json":          true,
+		"/home/me/.config/gh/hosts.yml":         true,
+		"/home/me/certs/server.pem":             true,
+		// Key material is matched by extension, so ordinary config files
+		// whose names merely contain "key" must stay unmasked.
+		"/home/me/.config/Code/User/keybindings.json": false,
+		"/home/me/.config/app/hotkeys.json":           false,
 	}
 	for path, want := range tests {
 		if got := isSensitivePath(path); got != want {
