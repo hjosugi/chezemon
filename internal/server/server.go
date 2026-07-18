@@ -31,7 +31,10 @@ func New(service *state.Service, logger *slog.Logger) http.Handler {
 	if err != nil {
 		panic(err)
 	}
-	mux.Handle("/", http.FileServer(http.FS(assets)))
+	// Registered as GET so the UI matches the API, which is GET-only. Go's
+	// ServeMux also routes HEAD here, and answers anything else with 405
+	// rather than serving the asset.
+	mux.Handle("GET /", http.FileServer(http.FS(assets)))
 	return requireLoopbackHost(securityHeaders(requestLog(logger, mux)))
 }
 
