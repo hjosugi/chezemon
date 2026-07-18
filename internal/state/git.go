@@ -60,8 +60,11 @@ func parseGitStatus(output []byte) []GitChange {
 		code := part[:2]
 		path := part[3:]
 		if code[0] == 'R' || code[0] == 'C' {
+			// With -z, a rename/copy emits the new path first and the
+			// original path in the following field. Render them in git's
+			// own "original -> new" reading order.
 			if i+1 < len(parts) && parts[i+1] != "" {
-				path += " -> " + parts[i+1]
+				path = parts[i+1] + " -> " + path
 				i++
 			}
 		}
