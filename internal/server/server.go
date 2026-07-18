@@ -5,8 +5,10 @@ import (
 	"errors"
 	"io/fs"
 	"log/slog"
+	"net"
 	"net/http"
 	"strconv"
+	"strings"
 
 	"github.com/hjosugi/chezemon/internal/state"
 	chezweb "github.com/hjosugi/chezemon/internal/web"
@@ -30,7 +32,38 @@ func New(service *state.Service, logger *slog.Logger) http.Handler {
 		panic(err)
 	}
 	mux.Handle("/", http.FileServer(http.FS(assets)))
-	return securityHeaders(requestLog(logger, mux))
+	return requireLoopbackHost(securityHeaders(requestLog(logger, mux)))
+}
+
+// requireLoopbackHost rejects requests whose Host header is not a loopback
+// name. Binding to 127.0.0.1 alone does not stop a DNS-rebinding attack: a
+// hostile page can point its own domain at 127.0.0.1 and then read this API
+// as same-origin, which would expose the dotfile inventory and revealed
+// diffs. Only loopback Host values are legitimate for a local-only UI.
+func requireLoopbackHost(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !isLoopbackHost(r.Host) {
+			http.Error(w, "forbidden: non-loopback Host header", http.StatusForbidden)
+			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func isLoopbackHost(host string) bool {
+	if host == "" {
+		return false
+	}
+	hostname, _, err := net.SplitHostPort(host)
+	if err != nil {
+		hostname = host
+	}
+	hostname = strings.Trim(hostname, "[]")
+	if strings.EqualFold(hostname, "localhost") {
+		return true
+	}
+	ip := net.ParseIP(hostname)
+	return ip != nil && ip.IsLoopback()
 }
 
 func (s *Server) health(w http.ResponseWriter, _ *http.Request) {
