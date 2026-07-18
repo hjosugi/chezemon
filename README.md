@@ -1,34 +1,19 @@
 # Chezemon
 
+[日本語](README.ja.md) · English
+
+[![CI](https://github.com/hjosugi/chezemon/actions/workflows/ci.yml/badge.svg)](https://github.com/hjosugi/chezemon/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-b8f36b.svg)](LICENSE)
+
 Chezemon is a local-first visual control plane for
-[chezmoi](https://www.chezmoi.io/). It puts chezmoi's source, rendered target,
-live home state, and source Git repository in one review queue.
+[chezmoi](https://www.chezmoi.io/). It shows the full path from upstream
+history to the files currently living in your home directory, then tells you
+what to review next.
 
-The first milestone is intentionally read-only. Chezemon helps you understand
-what will happen before it is allowed to change anything.
+Chezemon is intentionally read-only today. It helps you understand and protect
+your dotfiles before any tool is allowed to change them.
 
-## Why
-
-`git status` only reports changes in the source repository. `chezmoi status`
-reports drift between the generated target and the live home directory. A clean
-Git tree therefore does not mean that the machine is synchronized.
-
-Chezemon makes the full model visible:
-
-```text
-Git/source files  ->  rendered target  ->  live home
-      history          desired state        actual state
-```
-
-It prioritizes diverged files, explains status codes in plain language, shows
-per-file diffs, highlights scripts, and masks likely-sensitive diffs until the
-user explicitly reveals them.
-
-It also turns that state into a guided workflow. The dashboard identifies the
-current phase, explains the single safest next move, and shows which later
-stages are clear or waiting.
-
-## Run
+## Quick start
 
 Requirements:
 
@@ -36,35 +21,98 @@ Requirements:
 - chezmoi initialized for the current user
 - Git when the chezmoi source directory is a Git repository
 
-Chezemon supports Windows, macOS, and Linux. It is a single Go binary with an
-embedded browser UI, so it does not require Electron, Node.js, Python, or a
-platform-specific webview runtime.
-
 ```bash
-go run ./cmd/chezemon
-```
-
-Chezemon prints a loopback URL such as `http://127.0.0.1:41273`. Open that URL
-in a browser. To open it automatically:
-
-```bash
+git clone https://github.com/hjosugi/chezemon.git
+cd chezemon
 go run ./cmd/chezemon --open
 ```
 
-The server refuses non-loopback listen addresses.
+Chezemon prints a loopback URL such as `http://127.0.0.1:41273`. If the browser
+does not open automatically, open the printed URL yourself.
 
-To inspect the exact state model without starting the local server:
+Windows, macOS, and Linux are supported. The UI is embedded in a single Go
+binary; Electron, Node.js, Python, and platform-specific webview runtimes are
+not required.
 
-```bash
-chezemon --snapshot
+## What problem does it solve?
+
+Dotfile state is spread across four layers:
+
+```text
+remote/upstream -> Git/source -> rendered target -> live home
+     history       declaration    desired state     actual state
 ```
 
-This is useful for diagnostics and future editor integrations. It includes
-metadata and paths, but never includes file or diff contents.
+`git status` only reports source-repository changes. `chezmoi status` reports
+drift between rendered target state and the live home directory. A clean Git
+tree therefore does not mean that the machine is synchronized.
 
-## Develop
+Chezemon joins those layers into one risk-ranked review queue. It:
 
-This repository follows the project-local Nix + direnv workflow:
+- explains chezmoi's two-column status in plain language;
+- puts files changed on both sides before ordinary pending changes;
+- identifies the current phase and the single safest next move;
+- shows the remaining workflow as clear, current, or queued;
+- previews one file diff at a time;
+- separates scripts from file changes;
+- masks likely-sensitive diffs until explicitly revealed;
+- shows source Git state, upstream position, and recent commits.
+
+## Recommended workflow
+
+Chezemon derives a six-stage path from every fresh snapshot:
+
+1. Protect files changed on both sides.
+2. Decide whether to keep live-only changes.
+3. Stabilize the source Git working tree.
+4. Reconcile source history with its upstream.
+5. Inspect scripts and their side effects.
+6. Review and apply desired file changes.
+
+Select a stage to focus its queue. Select an entry to read the explanation,
+safest next step, and diff. Refresh after resolving a stage and Chezemon will
+advance the current phase automatically.
+
+See [Recommended chezmoi workflow](docs/recommended-workflow.md) for the manual
+commands and safety rules that complement the read-only UI.
+
+## CLI snapshot
+
+The same state model is available without starting the local server:
+
+```bash
+go run ./cmd/chezemon --snapshot
+```
+
+The JSON output includes metadata and paths, but never file or diff contents.
+This interface is intended to power future VS Code, desktop, and TUI clients
+without duplicating chezmoi logic.
+
+## Safety
+
+- Read-only by default
+- Loopback-only HTTP listener
+- No shell command strings
+- Serialized chezmoi operations
+- Built-in diff implementation
+- Sensitive diff masking
+- No telemetry or external file upload
+- Restrictive browser content security policy
+
+Future write operations will use a fresh plan, explicit preview and
+confirmation, narrow targets, backups, secret scanning, and an operation
+journal.
+
+## Development
+
+With Go installed:
+
+```bash
+go test ./...
+go run ./cmd/chezemon --open
+```
+
+With Nix and direnv:
 
 ```bash
 direnv allow
@@ -74,31 +122,9 @@ go build ./cmd/chezemon
 
 The application has no third-party Go or browser runtime dependencies.
 
-## Current scope
-
-- Read-only dashboard and risk-ranked review queue
-- Parsed chezmoi status with human explanations
-- Current-phase and next-action workflow guidance
-- Unified local Git state and recent commits
-- Per-entry diff preview
-- Sensitive-path masking
-- `chezmoi doctor` view
-- Local-only HTTP server with a restrictive content security policy
-
-Planned write operations will use an explicit plan/preview/confirm flow,
-targeted changes, backups, secret scanning, and a serialized operation queue.
-
-## Platform verification
-
-Every change is tested and compiled on:
-
-- Windows (amd64)
-- macOS (arm64)
-- Linux (amd64)
-
-The implementation itself is architecture-neutral; release packaging will add
-amd64 and arm64 artifacts for all supported operating systems where Go and
-chezmoi support them.
+Every change is tested and compiled in CI on Windows, macOS, and Linux. The
+codebase is also cross-built locally for amd64 and arm64 on all three operating
+systems.
 
 ## Project documents
 
