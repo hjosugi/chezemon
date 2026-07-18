@@ -1,0 +1,8 @@
+package web
+
+import "embed"
+
+// Assets contains the browser UI bundled into the Chezemon binary.
+//
+//go:embed index.html app.js styles.css
+var Assets embed.FS

@@ -1,0 +1,186 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="dark" />
+    <title>Chezemon</title>
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div class="ambient ambient-one"></div>
+    <div class="ambient ambient-two"></div>
+
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="Chezemon home">
+        <span class="brand-mark" aria-hidden="true">
+          <span class="brand-eye"></span>
+        </span>
+        <span>
+          <strong>Chezemon</strong>
+          <small>Dotfile control plane</small>
+        </span>
+      </a>
+      <div class="topbar-actions">
+        <span class="mode-badge"><span class="pulse-dot"></span> Read-only</span>
+        <button class="button secondary" id="doctor-button">Health</button>
+        <button class="button primary" id="refresh-button">Refresh</button>
+      </div>
+    </header>
+
+    <main class="page-shell">
+      <section class="hero">
+        <div>
+          <p class="eyebrow">SEE THE DRIFT. KEEP WHAT MATTERS.</p>
+          <h1>Your dotfiles—<span>finally clear.</span></h1>
+          <p class="hero-copy">
+            Chezemon explains what changed, surfaces risky divergence first,
+            and lets you inspect the exact effect before anything touches your files.
+          </p>
+        </div>
+        <div class="sync-model" aria-label="Chezemon state model">
+          <article class="state-node">
+            <span class="node-index">01</span>
+            <strong>Upstream</strong>
+            <small>Last-known remote state</small>
+            <span class="node-value" id="upstream-state">Checking…</span>
+          </article>
+          <span class="state-arrow">→</span>
+          <article class="state-node">
+            <span class="node-index">02</span>
+            <strong>Source</strong>
+            <small>Git working tree</small>
+            <span class="node-value" id="git-state">Checking…</span>
+          </article>
+          <span class="state-arrow">→</span>
+          <article class="state-node featured">
+            <span class="node-index">03</span>
+            <strong>Target</strong>
+            <small>Rendered for this machine</small>
+            <span class="node-value" id="target-state">Checking…</span>
+          </article>
+          <span class="state-arrow">→</span>
+          <article class="state-node">
+            <span class="node-index">04</span>
+            <strong>Live home</strong>
+            <small>Actual files on disk</small>
+            <span class="node-value" id="home-state">Checking…</span>
+          </article>
+        </div>
+      </section>
+
+      <section class="workflow-panel" aria-labelledby="workflow-title">
+        <div class="workflow-focus">
+          <p class="eyebrow">YOUR NEXT MOVE</p>
+          <span class="phase-badge" id="workflow-phase">Reading current state…</span>
+          <h2 id="workflow-title">Finding the safest starting point</h2>
+          <p id="workflow-summary">
+            Chezemon is checking source, rendered target, live home, and Git.
+          </p>
+          <div class="workflow-progress">
+            <span><strong id="workflow-completed">—</strong> of <strong id="workflow-total">—</strong> stages clear</span>
+            <div class="progress-track" aria-hidden="true"><span id="workflow-progress-bar"></span></div>
+          </div>
+        </div>
+        <div class="workflow-steps" id="workflow-steps" aria-live="polite"></div>
+      </section>
+
+      <section id="notices" class="notices" aria-live="polite"></section>
+
+      <section class="summary-grid" aria-label="Status summary">
+        <article class="metric critical">
+          <span class="metric-label">Needs attention</span>
+          <strong id="critical-count">—</strong>
+          <small>Diverged on both sides</small>
+        </article>
+        <article class="metric">
+          <span class="metric-label">Pending</span>
+          <strong id="pending-count">—</strong>
+          <small>Creates, updates, deletes</small>
+        </article>
+        <article class="metric">
+          <span class="metric-label">Scripts</span>
+          <strong id="script-count">—</strong>
+          <small>Would run on apply</small>
+        </article>
+        <article class="metric">
+          <span class="metric-label">Source Git</span>
+          <strong id="git-count">—</strong>
+          <small>Working-tree changes</small>
+        </article>
+      </section>
+
+      <section class="workspace">
+        <div class="queue-panel">
+          <div class="panel-heading">
+            <div>
+              <p class="eyebrow">REVIEW QUEUE</p>
+              <h2>Changes by risk</h2>
+            </div>
+            <span class="timestamp" id="timestamp">Waiting for snapshot</span>
+          </div>
+
+          <div class="filters">
+            <div class="segmented" role="tablist" aria-label="Review filters">
+              <button class="filter active" data-filter="all">All</button>
+              <button class="filter" data-filter="critical">Critical</button>
+              <button class="filter" data-filter="local">Live</button>
+              <button class="filter" data-filter="script">Scripts</button>
+              <button class="filter" data-filter="pending">Pending</button>
+              <button class="filter" data-filter="sensitive">Sensitive</button>
+            </div>
+            <label class="search">
+              <span aria-hidden="true">⌕</span>
+              <input id="search-input" type="search" placeholder="Filter paths" />
+            </label>
+          </div>
+
+          <div class="entry-list" id="entry-list" aria-live="polite">
+            <div class="empty-state">Loading chezmoi state…</div>
+          </div>
+        </div>
+
+        <aside class="detail-panel" id="detail-panel">
+          <div class="detail-empty">
+            <div class="detail-orbit"><span></span></div>
+            <h3>Select a change</h3>
+            <p>Choose an entry to see why it matters and preview its diff.</p>
+          </div>
+        </aside>
+      </section>
+
+      <section class="git-panel">
+        <div class="panel-heading">
+          <div>
+            <p class="eyebrow">SOURCE HISTORY</p>
+            <h2>Git at a glance</h2>
+          </div>
+          <span class="branch-pill" id="branch-pill">branch —</span>
+        </div>
+        <div class="git-layout">
+          <div>
+            <h3>Working tree</h3>
+            <div id="git-changes" class="git-changes"></div>
+          </div>
+          <div>
+            <h3>Recent commits</h3>
+            <div id="git-commits" class="commit-list"></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="health-dialog">
+      <div class="dialog-heading">
+        <div>
+          <p class="eyebrow">CHEZMOI DOCTOR</p>
+          <h2>Environment health</h2>
+        </div>
+        <button class="icon-button" id="health-close" aria-label="Close">×</button>
+      </div>
+      <pre id="health-output">Running checks…</pre>
+    </dialog>
+
+    <script src="/app.js" defer></script>
+  </body>
+</html>
