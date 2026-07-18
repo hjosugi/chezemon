@@ -78,3 +78,44 @@ func TestBuildWorkflowSynchronized(t *testing.T) {
 		t.Fatalf("unexpected synchronized workflow: %#v", workflow)
 	}
 }
+
+// chezmoi writes advisory warnings to stderr while still exiting 0. One such
+// warning reached this parser and became a phantom "critical divergence",
+// because "chezmoi: warning: ..." reads as code "ch" with two non-space
+// characters. Non-status text must be ignored.
+func TestParseStatusIgnoresNonStatusText(t *testing.T) {
+	output := "chezmoi: warning: config file template has changed, run chezmoi init to regenerate config file\n" +
+		"MM /home/test/.real.json\n" +
+		"error: something went wrong\n"
+	entries := parseStatus(output, "/home/test", sourceMetadata{})
+	if len(entries) != 1 {
+		t.Fatalf("got %d entries, want 1: %#v", len(entries), entries)
+	}
+	if entries[0].Path != "/home/test/.real.json" {
+		t.Errorf("parsed the wrong line: %#v", entries[0])
+	}
+}
+
+func TestIsStatusLine(t *testing.T) {
+	// chezmoi status codes are a space or an uppercase letter. An unfamiliar
+	// uppercase code is still accepted so it reaches the "unknown"
+	// classification rather than being silently dropped.
+	valid := []string{"MM /path", " M /path", "A  /path", " R /path", "XY /path"}
+	for _, line := range valid {
+		if !isStatusLine(line) {
+			t.Errorf("isStatusLine(%q) = false, want true", line)
+		}
+	}
+	invalid := []string{
+		"chezmoi: warning: config file template has changed",
+		"error: something went wrong",
+		"MMno-separator",
+		"m  /lowercase-is-not-a-status-code",
+		"",
+	}
+	for _, line := range invalid {
+		if isStatusLine(line) {
+			t.Errorf("isStatusLine(%q) = true, want false", line)
+		}
+	}
+}
