@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func parseStatus(output string, destDir string) []Entry {
+func parseStatus(output string, destDir string, meta sourceMetadata) []Entry {
 	var entries []Entry
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
@@ -25,18 +25,44 @@ func parseStatus(output string, destDir string) []Entry {
 			path = filepath.Join(destDir, path)
 		}
 		path = filepath.Clean(path)
-		kind, label, risk, explanation, action := classifyStatus(code)
-		entries = append(entries, Entry{
+
+		class := classifyStatus(code)
+		sourceRelative := meta.sourceRelative[path]
+
+		entry := Entry{
 			Code:              code,
 			Path:              path,
 			DisplayPath:       displayPath(path, destDir),
-			Kind:              kind,
-			Label:             label,
-			Risk:              risk,
-			Explanation:       explanation,
-			RecommendedAction: action,
-			Sensitive:         isSensitivePath(path),
-		})
+			SourcePath:        sourceRelative,
+			Kind:              class.Kind,
+			Label:             class.Label,
+			Risk:              class.Risk,
+			Explanation:       class.Explanation,
+			RecommendedAction: class.Action,
+		}
+
+		// A pending script is executed, not written to its nominal target
+		// path, so showing that path as "~/name.sh" implies a file that will
+		// never exist. Name the source script and say when it runs instead.
+		if class.Kind == "script" {
+			if sourceRelative != "" {
+				entry.DisplayPath, entry.ScriptTiming = scriptDisplay(sourceRelative)
+			} else {
+				entry.DisplayPath = filepath.Base(path)
+			}
+			if entry.ScriptTiming != "" {
+				entry.Explanation = fmt.Sprintf("%s This one runs %s.", entry.Explanation, entry.ScriptTiming)
+			}
+		}
+
+		switch {
+		case meta.encrypted[path]:
+			entry.Sensitive, entry.SensitiveReason = true, "chezmoi encrypts this file"
+		case isSensitivePath(path):
+			entry.Sensitive, entry.SensitiveReason = true, "this path usually holds secrets"
+		}
+
+		entries = append(entries, entry)
 	}
 
 	sort.SliceStable(entries, func(i, j int) bool {
@@ -49,54 +75,66 @@ func parseStatus(output string, destDir string) []Entry {
 	return entries
 }
 
-func classifyStatus(code string) (kind, label, risk, explanation, action string) {
+// classification is the plain-language reading of a two-character chezmoi
+// status code.
+type classification struct {
+	Kind        string
+	Label       string
+	Risk        string
+	Explanation string
+	Action      string
+}
+
+func classifyStatus(code string) classification {
 	if len(code) != 2 {
-		return "unknown", "Unknown", "medium", "Chezemon could not classify this status.", "Inspect the entry before changing it."
+		return classification{"unknown", "Unknown", "medium",
+			"Chezemon could not classify this status.",
+			"Inspect the entry before changing it."}
 	}
 	actual, target := code[0], code[1]
 	if actual != ' ' && target != ' ' {
-		return "diverged", "Both sides changed", "critical",
+		return classification{"diverged", "Both sides changed", "critical",
 			"The live file changed and the rendered target would also change it. Applying or re-adding blindly may lose work.",
-			"Review a three-way diff and merge the changes."
+			"Review a three-way diff and merge the changes."}
 	}
 
 	switch target {
 	case 'R':
-		return "script", "Script will run", "high",
+		return classification{"script", "Script will run", "high",
 			"A chezmoi script is scheduled to run on apply. Scripts may change files, install software, use the network, or request privileges.",
-			"Inspect the script and run reason before applying."
+			"Inspect the script and run reason before applying."}
 	case 'D':
-		return "pending-delete", "Will be deleted", "high",
+		return classification{"pending-delete", "Will be deleted", "high",
 			"The rendered target says this live path should be removed.",
-			"Confirm the deletion in the diff before applying."
+			"Confirm the deletion in the diff before applying."}
 	case 'M':
-		return "pending-modify", "Pending apply", "medium",
+		return classification{"pending-modify", "Pending apply", "medium",
 			"The rendered target differs from the live file. Applying will modify the live file.",
-			"Review the diff, then apply this file if the target is correct."
+			"Review the diff, then apply this file if the target is correct."}
 	case 'A':
-		return "pending-create", "Will be created", "low",
+		return classification{"pending-create", "Will be created", "low",
 			"The rendered target contains a path that is not present in the live home.",
-			"Review the new content, then apply this file."
+			"Review the new content, then apply this file."}
 	}
 
 	switch actual {
 	case 'M':
-		return "local-change", "Live file changed", "medium",
+		return classification{"local-change", "Live file changed", "medium",
 			"The live file changed since chezmoi last wrote it.",
-			"Decide whether to keep the live change, discard it, or merge it."
+			"Decide whether to keep the live change, discard it, or merge it."}
 	case 'D':
-		return "local-delete", "Live file deleted", "high",
+		return classification{"local-delete", "Live file deleted", "high",
 			"The live path was deleted since chezmoi last wrote it.",
-			"Decide whether the deletion should be captured or the file restored."
+			"Decide whether the deletion should be captured or the file restored."}
 	case 'A':
-		return "local-create", "Live file created", "low",
+		return classification{"local-create", "Live file created", "low",
 			"A new live path is relevant to the managed state.",
-			"Inspect it before adding it to source."
+			"Inspect it before adding it to source."}
 	}
 
-	return "unknown", fmt.Sprintf("Status %q", code), "medium",
+	return classification{"unknown", fmt.Sprintf("Status %q", code), "medium",
 		"Chezemon does not yet have a plain-language explanation for this status.",
-		"Inspect the raw chezmoi status and diff."
+		"Inspect the raw chezmoi status and diff."}
 }
 
 func displayPath(path, destDir string) string {

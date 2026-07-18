@@ -498,7 +498,7 @@ h1 span {
   box-shadow: inset 3px 0 0 var(--green);
 }
 
-.workflow-step.done {
+.workflow-step.clear {
   cursor: default;
   opacity: 0.48;
 }
@@ -515,11 +515,18 @@ h1 span {
   font-size: 0.65rem;
 }
 
-.workflow-step.current .step-marker,
-.workflow-step.done .step-marker {
+.workflow-step.current .step-marker {
   color: #11150c;
   border-color: var(--green);
   background: var(--green);
+}
+
+/* A stage with nothing in it was not necessarily worked on: Chezemon keeps no
+   history. Keep its marker muted so it does not read as an earned checkmark. */
+.workflow-step.clear .step-marker {
+  color: var(--muted);
+  border-style: dashed;
+  background: transparent;
 }
 
 .step-copy {
@@ -990,6 +997,27 @@ h1 span {
   line-height: 1.58;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
+}
+
+.workflow-outstanding {
+  display: block;
+  margin-top: 7px;
+  color: var(--muted);
+  font-family: var(--mono);
+  font-size: 0.63rem;
+}
+
+.detail-source {
+  margin: 0 0 6px;
+  color: var(--muted);
+  font-size: 0.66rem;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.detail-source code {
+  font-family: var(--mono);
+  font-size: 0.63rem;
 }
 
 .diff-line {
