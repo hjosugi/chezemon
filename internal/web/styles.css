@@ -2,14 +2,11 @@
   color-scheme: dark;
   --bg: #090b0b;
   --panel: rgba(18, 21, 20, 0.86);
-  --panel-solid: #121514;
-  --panel-raised: #191d1b;
   --border: rgba(255, 255, 255, 0.1);
   --border-strong: rgba(255, 255, 255, 0.18);
   --text: #f4f1e8;
   --muted: #979d96;
   --green: #b8f36b;
-  --green-strong: #8ddd36;
   --yellow: #f3c969;
   --red: #ff756f;
   --blue: #80bfff;
@@ -49,29 +46,6 @@ input {
 
 button {
   color: inherit;
-}
-
-.ambient {
-  position: fixed;
-  z-index: -1;
-  width: 26rem;
-  height: 26rem;
-  border-radius: 50%;
-  opacity: 0.1;
-  filter: blur(110px);
-  pointer-events: none;
-}
-
-.ambient-one {
-  top: 15%;
-  left: -12rem;
-  background: var(--green);
-}
-
-.ambient-two {
-  top: 55%;
-  right: -14rem;
-  background: #4f7cff;
 }
 
 .topbar {
@@ -214,6 +188,17 @@ button {
 /* ---- topbar pipeline -------------------------------------------------
    The four-stage pipeline carries its own numbers, so there is no separate
    metric-card grid repeating the same figures further down the page. */
+
+/* Used by the health dialog heading. The rule was lost with the hero it was
+   introduced for; the markup that uses it was not. */
+.eyebrow {
+  margin: 0 0 8px;
+  color: var(--green);
+  font-family: var(--mono);
+  font-size: 0.66rem;
+  font-weight: 750;
+  letter-spacing: 0.18em;
+}
 
 .pipeline {
   display: flex;
@@ -514,14 +499,12 @@ button {
   background-size: 30px 30px;
 }
 
-.panel-heading,
 .dialog-heading {
   display: flex;
   align-items: center;
   justify-content: space-between;
 }
 
-.panel-heading h2,
 .dialog-heading h2 {
   margin: 0;
   font-size: 1.3rem;
@@ -722,44 +705,6 @@ button {
   line-height: 1.6;
 }
 
-.detail-orbit {
-  position: relative;
-  display: grid;
-  width: 72px;
-  height: 72px;
-  place-items: center;
-  border: 1px solid #3b413c;
-  border-radius: 50%;
-}
-
-.detail-orbit::before,
-.detail-orbit::after {
-  position: absolute;
-  content: "";
-  border: 1px solid rgba(184, 243, 107, 0.15);
-  border-radius: 50%;
-}
-
-.detail-orbit::before {
-  width: 98px;
-  height: 42px;
-  transform: rotate(35deg);
-}
-
-.detail-orbit::after {
-  width: 42px;
-  height: 98px;
-  transform: rotate(35deg);
-}
-
-.detail-orbit span {
-  width: 10px;
-  height: 10px;
-  border-radius: 50%;
-  background: var(--green);
-  box-shadow: 0 0 18px rgba(184, 243, 107, 0.7);
-}
-
 .risk-badge.critical {
   color: var(--red);
   border-color: rgba(255, 117, 111, 0.3);
@@ -856,14 +801,6 @@ button {
   overflow-wrap: anywhere;
 }
 
-.workflow-outstanding {
-  display: block;
-  margin-top: 7px;
-  color: var(--muted);
-  font-family: var(--mono);
-  font-size: 0.63rem;
-}
-
 .detail-source {
   margin: 0 0 6px;
   color: var(--muted);
@@ -949,12 +886,7 @@ button {
   font-size: 0.7rem;
 }
 
-.git-panel details[open] summary::before,
-.git-panel[open] summary::before {
-  content: "▾";
-}
-
-#git-details[open] summary::before {
+.git-panel details[open] summary::before {
   content: "▾";
 }
 
@@ -1101,96 +1033,60 @@ dialog::backdrop {
 }
 
 @media (max-width: 1160px) {
-  .hero {
-    grid-template-columns: 1fr;
-  }
-
-  .sync-model {
-    max-width: 760px;
-  }
-
-  .workflow-panel {
-    grid-template-columns: 1fr;
-  }
-
+  /* Stacked, the two panes cannot share one viewport-height box: the detail
+     pane's min-height would leave the queue a sliver and overflow:hidden
+     would clip it. Let the workspace grow and the page scroll instead. */
   .workspace {
     grid-template-columns: 1fr;
+    height: auto;
+    overflow: visible;
+  }
+
+  .entry-list {
+    max-height: 60vh;
   }
 
   .queue-panel {
+    overflow: visible;
     border-right: 0;
     border-bottom: 1px solid var(--border);
   }
 
   .detail-panel {
-    min-height: 520px;
+    min-height: 420px;
   }
 }
 
 @media (max-width: 760px) {
   .topbar {
-    padding: 0 18px;
+    gap: 10px 14px;
+    padding: 9px 14px;
   }
 
   .mode-badge,
-  .button.secondary {
+  .timestamp {
+    display: none;
+  }
+
+  .pipeline {
+    gap: 6px 10px;
+    order: 3;
+    width: 100%;
+  }
+
+  .stage-arrow {
     display: none;
   }
 
   .page-shell {
-    width: min(94vw, 680px);
-    padding-top: 48px;
+    width: 94vw;
   }
 
-  .sync-model {
-    grid-template-columns: 1fr;
-    gap: 8px;
+  .next-move-head h1 {
+    min-width: 0;
   }
 
-  .state-arrow {
-    transform: rotate(90deg);
-    text-align: center;
-  }
-
-  .state-node {
-    min-height: 116px;
-  }
-
-  .state-node strong {
-    margin-top: 12px;
-  }
-
-  .summary-grid {
-    grid-template-columns: 1fr 1fr;
-  }
-
-  .workflow-panel {
-    padding: 18px;
-  }
-
-  .workflow-focus {
-    padding: 4px 0 12px;
-  }
-
-  .step-copy small {
-    white-space: normal;
-  }
-
-  .step-state {
-    display: none;
-  }
-
-  .metric {
-    min-height: 125px;
-  }
-
-  .queue-panel,
-  .detail-panel,
-  .git-panel {
-    padding: 18px;
-  }
-
-  .filters {
+  .queue-toolbar {
     align-items: stretch;
     flex-direction: column;
   }
@@ -1203,8 +1099,17 @@ dialog::backdrop {
     width: 100%;
   }
 
+  .entry-list {
+    max-height: 55vh;
+  }
+
+  .queue-panel,
+  .detail-panel {
+    padding: 13px;
+  }
+
   .git-layout {
     grid-template-columns: 1fr;
-    gap: 26px;
+    gap: 20px;
   }
 }
