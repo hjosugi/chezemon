@@ -28,14 +28,12 @@ func TestScriptDisplayNamesSourceAndTiming(t *testing.T) {
 	}
 }
 
-// parseStatus cleans every path it reads, so metadata keys must be built with
-// filepath rather than as literal slash-separated strings — otherwise the
-// lookup silently misses on Windows and the assertions below pass or fail for
-// the wrong reason.
+// parseOneEntry parses a single status line, with the target path built via
+// testDest so the metadata key and the parsed path agree on every platform.
 func parseOneEntry(t *testing.T, code string, segments []string, meta func(target string) sourceMetadata) Entry {
 	t.Helper()
-	dest := t.TempDir()
-	target := filepath.Join(append([]string{dest}, segments...)...)
+	dest, path := testDest(t)
+	target := path(segments...)
 	entries := parseStatus(code+" "+target+"\n", dest, meta(target))
 	if len(entries) != 1 {
 		t.Fatalf("got %d entries, want 1", len(entries))
