@@ -139,6 +139,7 @@ function selectEntry(entry) {
         <button class="text-button hidden" id="reveal-button">Reveal sensitive diff</button>
       </div>
       <pre id="diff-output">Loading…</pre>
+      <p class="diff-note hidden" id="diff-note"></p>
     </div>
   `;
   $("#diff-button").addEventListener("click", () => loadDiff(entry, false));
@@ -166,6 +167,14 @@ async function loadDiff(entry, reveal) {
     } else {
       output.textContent = "No textual diff is available for this entry.";
     }
+    // A render failure arrives with whatever chezmoi managed to produce, so
+    // show both rather than replacing the diff with an error.
+    const note = [diff.truncated ? diff.message : "", diff.error ? `Could not finish rendering: ${diff.error}` : ""]
+      .filter(Boolean)
+      .join("\n");
+    const noteNode = $("#diff-note");
+    noteNode.textContent = note;
+    noteNode.classList.toggle("hidden", !note);
   } catch (error) {
     output.textContent = `Could not render diff:\n${error.message}`;
   }

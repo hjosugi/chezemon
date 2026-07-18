@@ -103,7 +103,11 @@ type Diff struct {
 	Content    string `json:"content,omitempty"`
 	Sensitive  bool   `json:"sensitive"`
 	Revealed   bool   `json:"revealed"`
+	Truncated  bool   `json:"truncated,omitempty"`
 	Message    string `json:"message,omitempty"`
+	// Error records a failed render. It travels in the payload so that any
+	// partial diff chezmoi produced before failing is still shown.
+	Error string `json:"error,omitempty"`
 }
 
 type DoctorResult struct {

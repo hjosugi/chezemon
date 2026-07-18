@@ -1,6 +1,14 @@
 package server
 
-import "testing"
+import (
+	"log/slog"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+	"time"
+
+	"github.com/hjosugi/chezemon/internal/state"
+)
 
 func TestIsLoopbackHost(t *testing.T) {
 	allowed := []string{
@@ -33,5 +41,39 @@ func TestIsLoopbackHost(t *testing.T) {
 		if isLoopbackHost(host) {
 			t.Errorf("isLoopbackHost(%q) = true, want false", host)
 		}
+	}
+}
+
+// The API is GET-only; the asset handler is registered the same way so that a
+// write method is refused rather than quietly answered with the page.
+func TestStaticAssetsRejectNonGET(t *testing.T) {
+	handler := New(state.NewService(nil, time.Second), slog.New(slog.DiscardHandler))
+
+	for _, method := range []string{http.MethodGet, http.MethodHead} {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(method, "http://127.0.0.1/", nil))
+		if recorder.Code != http.StatusOK {
+			t.Errorf("%s / = %d, want 200", method, recorder.Code)
+		}
+	}
+
+	for _, method := range []string{http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodPatch} {
+		recorder := httptest.NewRecorder()
+		handler.ServeHTTP(recorder, httptest.NewRequest(method, "http://127.0.0.1/", nil))
+		if recorder.Code != http.StatusMethodNotAllowed {
+			t.Errorf("%s / = %d, want 405", method, recorder.Code)
+		}
+	}
+}
+
+func TestNonLoopbackHostIsRefused(t *testing.T) {
+	handler := New(state.NewService(nil, time.Second), slog.New(slog.DiscardHandler))
+	request := httptest.NewRequest(http.MethodGet, "http://127.0.0.1/", nil)
+	request.Host = "evil.example.com"
+
+	recorder := httptest.NewRecorder()
+	handler.ServeHTTP(recorder, request)
+	if recorder.Code != http.StatusForbidden {
+		t.Errorf("got %d, want 403", recorder.Code)
 	}
 }
