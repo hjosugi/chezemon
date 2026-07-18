@@ -13,6 +13,13 @@ import (
 	"github.com/hjosugi/chezemon/internal/command"
 )
 
+// maxDiffBytes bounds what a single diff response may carry. chezmoi will
+// happily render a diff for a very large or effectively binary managed file,
+// and the browser puts the whole thing in one <pre>. Truncating server-side
+// keeps one oversized entry from freezing the review UI; the entry is still
+// listed, and the reader is told the view was cut short.
+const maxDiffBytes = 256 << 10
+
 type Service struct {
 	runner   command.Runner
 	timeout  time.Duration
@@ -21,6 +28,11 @@ type Service struct {
 	cached   *Snapshot
 	cachedAt time.Time
 	cacheTTL time.Duration
+
+	// chezmoi's version cannot change within one run of this process, so it is
+	// read once rather than on every snapshot.
+	versionMu sync.Mutex
+	version   string
 }
 
 type configView struct {
@@ -78,23 +90,46 @@ func (s *Service) Snapshot(ctx context.Context, force bool) (Snapshot, error) {
 		return Snapshot{}, errors.New("chezmoi returned an incomplete source/destination configuration")
 	}
 
-	versionOutput, err := s.runner.Run(ctx, "chezmoi", "--version")
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("read chezmoi version: %w", err)
+	// Everything below depends only on the configuration, not on each other,
+	// so the remaining dozen or so chezmoi and git invocations run
+	// concurrently rather than end to end.
+	var (
+		wait         sync.WaitGroup
+		statusOutput []byte
+		statusErr    error
+		version      string
+		meta         sourceMetadata
+		gitState     GitState
+	)
+	wait.Add(4)
+	go func() {
+		defer wait.Done()
+		statusOutput, statusErr = s.runner.Run(ctx, "chezmoi", "--color=false", "status", "--path-style=absolute")
+	}()
+	go func() {
+		defer wait.Done()
+		version = s.chezmoiVersion(ctx)
+	}()
+	go func() {
+		defer wait.Done()
+		meta = loadSourceMetadata(ctx, s.runner)
+	}()
+	go func() {
+		defer wait.Done()
+		gitState = loadGit(ctx, s.runner, cfg.SourceDir)
+	}()
+	wait.Wait()
+
+	if statusErr != nil {
+		return Snapshot{}, fmt.Errorf("read chezmoi status: %w", statusErr)
 	}
 
-	statusOutput, err := s.runner.Run(ctx, "chezmoi", "--color=false", "status", "--path-style=absolute")
-	if err != nil {
-		return Snapshot{}, fmt.Errorf("read chezmoi status: %w", err)
-	}
-
-	entries := parseStatus(string(statusOutput), cfg.DestDir, loadSourceMetadata(ctx, s.runner))
-	gitState := loadGit(ctx, s.runner, cfg.SourceDir)
+	entries := parseStatus(string(statusOutput), cfg.DestDir, meta)
 	counts := countEntries(entries)
 	snapshot := Snapshot{
 		GeneratedAt:    time.Now(),
 		DurationMS:     time.Since(start).Milliseconds(),
-		ChezmoiVersion: strings.TrimSpace(string(versionOutput)),
+		ChezmoiVersion: version,
 		SourceDir:      cfg.SourceDir,
 		DestDir:        cfg.DestDir,
 		ReadOnly:       true,
@@ -110,6 +145,28 @@ func (s *Service) Snapshot(ctx context.Context, force bool) (Snapshot, error) {
 	s.cachedAt = time.Now()
 	s.cacheMu.Unlock()
 	return snapshot, nil
+}
+
+// chezmoiVersion reads the version once and reuses it.
+//
+// A failure is not cached and not fatal: the version is informational, so a
+// later snapshot retries, and until one succeeds the field reads "unknown"
+// rather than refusing to show the drift the user came to look at.
+func (s *Service) chezmoiVersion(ctx context.Context) string {
+	s.versionMu.Lock()
+	defer s.versionMu.Unlock()
+	if s.version != "" {
+		return s.version
+	}
+	output, err := s.runner.Run(ctx, "chezmoi", "--version")
+	if err != nil {
+		return "unknown"
+	}
+	s.version = strings.TrimSpace(string(output))
+	if s.version == "" {
+		return "unknown"
+	}
+	return s.version
 }
 
 func (s *Service) Diff(ctx context.Context, target string, reveal bool) (Diff, error) {
@@ -142,12 +199,25 @@ func (s *Service) Diff(ctx context.Context, target string, reveal bool) (Diff, e
 		"diff",
 		entry.Path,
 	)
+	content, truncated := truncateDiff(string(output))
 	diff := Diff{
-		Path: entry.Path, Content: string(output),
+		Path: entry.Path, Content: content, Truncated: truncated,
 		Sensitive: entry.Sensitive, Revealed: reveal,
 	}
+	if truncated {
+		diff.Message = fmt.Sprintf(
+			"This diff is larger than %d KiB and is shown truncated. Use `chezmoi diff %s` for the whole thing.",
+			maxDiffBytes>>10, entry.DisplayPath,
+		)
+	}
+
+	// A failed render is reported in the payload rather than as a transport
+	// error, because chezmoi often writes a usable partial diff before
+	// failing. Discarding it threw away the most useful thing available at
+	// exactly the moment the reader needed it.
 	if runErr != nil {
-		return diff, fmt.Errorf("render chezmoi diff: %w", runErr)
+		diff.Error = runErr.Error()
+		return diff, nil
 	}
 
 	if sourceOutput, sourceErr := s.runner.Run(ctx, "chezmoi", "source-path", entry.Path); sourceErr == nil {
@@ -164,6 +234,19 @@ func (s *Service) Doctor(ctx context.Context) DoctorResult {
 
 	output, err := s.runner.Run(ctx, "chezmoi", "--color=false", "--no-pager", "doctor", "--no-network")
 	return DoctorResult{Output: string(output), OK: err == nil}
+}
+
+// truncateDiff caps a diff at maxDiffBytes, cutting back to the last complete
+// line so the result still reads as a diff rather than stopping mid-token.
+func truncateDiff(content string) (string, bool) {
+	if len(content) <= maxDiffBytes {
+		return content, false
+	}
+	cut := content[:maxDiffBytes]
+	if newline := strings.LastIndexByte(cut, '\n'); newline > 0 {
+		cut = cut[:newline]
+	}
+	return cut, true
 }
 
 func findEntry(entries []Entry, target string) (Entry, bool) {
