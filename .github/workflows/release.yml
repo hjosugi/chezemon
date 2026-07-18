@@ -1,0 +1,67 @@
+name: Release
+
+# Building release archives by hand produced binaries stamped with a
+# pseudo-version rather than the release version, because they were built
+# before the tag existed — v0.1.0's archive reported itself as v0.0.0.
+# Building from the pushed tag is the only way to get that right reliably.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          # The tag must be present for the toolchain to stamp it as the
+          # module version.
+          fetch-depth: 0
+
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+
+      - name: Test
+        run: go test -race ./...
+
+      - name: Build
+        run: |
+          set -euo pipefail
+          mkdir -p dist
+          for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64; do
+            os="${target%/*}"; arch="${target#*/}"
+            name="chezemon-${os}-${arch}"
+            [ "$os" = windows ] && name="${name}.exe"
+            CGO_ENABLED=0 GOOS="$os" GOARCH="$arch" \
+              go build -trimpath -o "dist/${name}" ./cmd/chezemon
+          done
+          cd dist && sha256sum ./* > SHA256SUMS
+
+      # Fail loudly rather than publish mislabelled archives again.
+      - name: Verify the binaries carry the tag
+        run: |
+          set -euo pipefail
+          stamped="$(go version -m dist/chezemon-linux-amd64 | awk '$1 == "mod" { print $3 }')"
+          echo "stamped module version: ${stamped}"
+          if [ "$stamped" != "${GITHUB_REF_NAME}" ]; then
+            echo "::error::expected ${GITHUB_REF_NAME}, got ${stamped}"
+            exit 1
+          fi
+          ./dist/chezemon-linux-amd64 --version
+
+      # Published as a draft so the notes are written deliberately; the
+      # archives are already attached and verified.
+      - name: Create draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "${GITHUB_REF_NAME}" \
+            --draft \
+            --generate-notes \
+            dist/*
