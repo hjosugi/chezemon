@@ -2,7 +2,9 @@ package state
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -10,6 +12,8 @@ import (
 
 type recordingRunner struct {
 	calls []string
+	dest  string
+	path  string
 }
 
 func (r *recordingRunner) Run(_ context.Context, program string, args ...string) ([]byte, error) {
@@ -17,11 +21,12 @@ func (r *recordingRunner) Run(_ context.Context, program string, args ...string)
 	r.calls = append(r.calls, call)
 	switch {
 	case call == "chezmoi dump-config --format=json":
-		return []byte(`{"sourceDir":"/source","destDir":"/home/test"}`), nil
+		config, err := json.Marshal(configView{SourceDir: r.dest, DestDir: r.dest})
+		return config, err
 	case call == "chezmoi --version":
 		return []byte("chezmoi version v2.71.0"), nil
 	case strings.Contains(call, " status "):
-		return []byte(" M /home/test/.config/rclone/rclone.conf\n"), nil
+		return []byte(" M " + r.path + "\n"), nil
 	case strings.Contains(call, "rev-parse --is-inside-work-tree"):
 		return nil, errors.New("not a Git working tree")
 	default:
@@ -30,10 +35,12 @@ func (r *recordingRunner) Run(_ context.Context, program string, args ...string)
 }
 
 func TestDiffMasksSensitiveContentBeforeRunningDiff(t *testing.T) {
-	runner := &recordingRunner{}
+	dest := t.TempDir()
+	target := filepath.Join(dest, ".config", "rclone", "rclone.conf")
+	runner := &recordingRunner{dest: dest, path: target}
 	service := NewService(runner, time.Second)
 
-	diff, err := service.Diff(context.Background(), "/home/test/.config/rclone/rclone.conf", false)
+	diff, err := service.Diff(context.Background(), target, false)
 	if err != nil {
 		t.Fatal(err)
 	}
