@@ -11,6 +11,33 @@
   --red: #ff756f;
   --blue: #80bfff;
   --shadow: 0 26px 80px rgba(0, 0, 0, 0.38);
+  /* Type scale. Every font-size in this file resolves to one of these, so
+     sizes cannot drift apart a hundredth of a rem at a time. */
+  --fs-3xs: 0.62rem;
+  --fs-2xs: 0.66rem;
+  --fs-xs: 0.72rem;
+  --fs-sm: 0.76rem;
+  --fs-md: 0.82rem;
+  --fs-lg: 1.02rem;
+  --fs-xl: 1.25rem;
+  --fs-2xl: 1.4rem;
+
+  --weight-medium: 560;
+  --weight-semibold: 610;
+  --weight-bold: 730;
+
+  --tracking-tight: -0.02em;
+  --tracking-normal: 0.01em;
+  --tracking-wide: 0.05em;
+  --tracking-caps: 0.09em;
+  --tracking-eyebrow: 0.18em;
+
+  --radius-xs: 7px;
+  --radius-sm: 10px;
+  --radius-md: 13px;
+  --radius-lg: 17px;
+  --radius-pill: 999px;
+
   --mono: "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace;
   --sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
 }
@@ -74,11 +101,9 @@ button {
 
 .brand strong {
   display: block;
-  font-size: 1rem;
-  letter-spacing: 0.01em;
+  font-size: var(--fs-lg);
+  letter-spacing: var(--tracking-normal);
 }
-
-
 
 .brand-mark {
   position: relative;
@@ -118,12 +143,12 @@ button {
   min-height: 29px;
   padding: 0 10px;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--muted);
   background: rgba(255, 255, 255, 0.035);
   font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.04em;
+  font-size: var(--fs-2xs);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
 }
 
@@ -140,8 +165,8 @@ button {
   padding: 0 16px;
   cursor: pointer;
   border: 1px solid transparent;
-  border-radius: 9px;
-  font-weight: 720;
+  border-radius: var(--radius-xs);
+  font-weight: var(--weight-bold);
   transition: 150ms ease;
 }
 
@@ -185,20 +210,20 @@ button {
   padding: 14px 0 24px;
 }
 
-/* ---- topbar pipeline -------------------------------------------------
-   The four-stage pipeline carries its own numbers, so there is no separate
-   metric-card grid repeating the same figures further down the page. */
-
 /* Used by the health dialog heading. The rule was lost with the hero it was
    introduced for; the markup that uses it was not. */
 .eyebrow {
   margin: 0 0 8px;
   color: var(--green);
   font-family: var(--mono);
-  font-size: 0.66rem;
-  font-weight: 750;
-  letter-spacing: 0.18em;
+  font-size: var(--fs-2xs);
+  font-weight: var(--weight-bold);
+  letter-spacing: var(--tracking-eyebrow);
 }
+
+/* ---- topbar pipeline -------------------------------------------------
+   The four-stage pipeline carries its own numbers, so there is no separate
+   metric-card grid repeating the same figures further down the page. */
 
 .pipeline {
   display: flex;
@@ -218,15 +243,15 @@ button {
 .stage-name {
   color: #6e746e;
   font-family: var(--mono);
-  font-size: 0.6rem;
-  letter-spacing: 0.08em;
+  font-size: var(--fs-3xs);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
 }
 
 .stage-value {
   color: var(--text);
   font-family: var(--mono);
-  font-size: 0.74rem;
+  font-size: var(--fs-sm);
   white-space: nowrap;
 }
 
@@ -240,7 +265,7 @@ button {
 
 .stage-arrow {
   color: #3f453f;
-  font-size: 0.8rem;
+  font-size: var(--fs-md);
 }
 
 /* ---- notices --------------------------------------------------------- */
@@ -261,7 +286,7 @@ button {
   gap: 11px;
   padding: 9px 13px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: var(--panel);
 }
 
@@ -282,7 +307,7 @@ button {
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.09);
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--fs-2xs);
 }
 
 .notice.critical .notice-mark {
@@ -308,13 +333,13 @@ button {
 }
 
 .notice strong {
-  font-size: 0.78rem;
+  font-size: var(--fs-sm);
 }
 
 .notice p {
   margin: 0;
   color: var(--muted);
-  font-size: 0.73rem;
+  font-size: var(--fs-xs);
 }
 
 /* ---- next move ------------------------------------------------------- */
@@ -323,7 +348,7 @@ button {
   margin-bottom: 12px;
   padding: 15px 17px;
   border: 1px solid rgba(184, 243, 107, 0.2);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background:
     radial-gradient(circle at 0 0, rgba(184, 243, 107, 0.07), transparent 40%),
     var(--panel);
@@ -340,20 +365,20 @@ button {
   margin: 0;
   flex: 1;
   min-width: 220px;
-  font-size: 1.05rem;
-  font-weight: 610;
-  letter-spacing: -0.02em;
+  font-size: var(--fs-lg);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
 }
 
 .phase-badge {
   padding: 4px 10px;
   border: 1px solid rgba(184, 243, 107, 0.4);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   color: var(--green);
   background: rgba(184, 243, 107, 0.1);
   font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.06em;
+  font-size: var(--fs-3xs);
+  letter-spacing: var(--tracking-wide);
   text-transform: uppercase;
   white-space: nowrap;
 }
@@ -361,19 +386,19 @@ button {
 .next-move-counts {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--fs-2xs);
   white-space: nowrap;
 }
 
 .next-move-counts strong {
   color: var(--text);
-  font-size: 0.85rem;
+  font-size: var(--fs-md);
 }
 
 .next-move-summary {
   margin: 7px 0 0;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-sm);
   line-height: 1.5;
 }
 
@@ -393,9 +418,9 @@ button {
   padding: 5px 10px 5px 6px;
   cursor: pointer;
   border: 1px solid var(--border);
-  border-radius: 999px;
+  border-radius: var(--radius-pill);
   background: rgba(0, 0, 0, 0.22);
-  font-size: 0.73rem;
+  font-size: var(--fs-xs);
   transition: border-color 140ms ease, background 140ms ease;
 }
 
@@ -423,7 +448,7 @@ button {
   border-radius: 50%;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.6rem;
+  font-size: var(--fs-3xs);
 }
 
 .step.current .step-marker {
@@ -446,7 +471,7 @@ button {
 .step-count {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--fs-2xs);
 }
 
 .step.current .step-count {
@@ -460,7 +485,7 @@ button {
   min-height: 400px;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 18px;
+  border-radius: var(--radius-lg);
   background: var(--panel);
   box-shadow: var(--shadow);
 }
@@ -507,15 +532,15 @@ button {
 
 .dialog-heading h2 {
   margin: 0;
-  font-size: 1.3rem;
-  font-weight: 610;
-  letter-spacing: -0.025em;
+  font-size: var(--fs-xl);
+  font-weight: var(--weight-semibold);
+  letter-spacing: var(--tracking-tight);
 }
 
 .timestamp {
   color: #676d67;
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--fs-2xs);
 }
 
 .segmented {
@@ -523,7 +548,7 @@ button {
   gap: 3px;
   padding: 4px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: rgba(0, 0, 0, 0.2);
 }
 
@@ -532,10 +557,10 @@ button {
   padding: 0 10px;
   cursor: pointer;
   border: 0;
-  border-radius: 7px;
+  border-radius: var(--radius-xs);
   color: #777d77;
   background: transparent;
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
 }
 
 .filter.active {
@@ -551,7 +576,7 @@ button {
   min-height: 39px;
   padding: 0 11px;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-xs);
   color: #777d77;
   background: rgba(0, 0, 0, 0.2);
 }
@@ -562,7 +587,7 @@ button {
   outline: 0;
   color: var(--text);
   background: transparent;
-  font-size: 0.73rem;
+  font-size: var(--fs-xs);
 }
 
 .entry-list {
@@ -588,7 +613,7 @@ button {
   cursor: pointer;
   text-align: left;
   border: 1px solid transparent;
-  border-radius: 11px;
+  border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.025);
   transition: 140ms ease;
 }
@@ -610,11 +635,11 @@ button {
   height: 29px;
   place-items: center;
   border: 1px solid var(--border);
-  border-radius: 8px;
+  border-radius: var(--radius-xs);
   color: var(--muted);
   background: rgba(255, 255, 255, 0.03);
   font-family: var(--mono);
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
 }
 
 .entry.critical .risk-icon {
@@ -641,14 +666,14 @@ button {
 
 .entry-main strong {
   font-family: var(--mono);
-  font-size: 0.76rem;
-  font-weight: 560;
+  font-size: var(--fs-sm);
+  font-weight: var(--weight-medium);
 }
 
 .entry-main small {
   margin-top: 6px;
   color: #767c76;
-  font-size: 0.67rem;
+  font-size: var(--fs-2xs);
 }
 
 .sensitive-tag {
@@ -657,12 +682,12 @@ button {
   color: var(--yellow);
   border-color: rgba(243, 201, 105, 0.22);
   background: rgba(243, 201, 105, 0.05);
-  font-size: 0.58rem;
+  font-size: var(--fs-3xs);
 }
 
 .entry-chevron {
   color: #5a605b;
-  font-size: 1.2rem;
+  font-size: var(--fs-xl);
 }
 
 .empty-state,
@@ -674,7 +699,7 @@ button {
   text-align: center;
   color: var(--muted);
   border: 1px dashed var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
 }
 
 .error-state {
@@ -695,13 +720,13 @@ button {
 
 .detail-empty h3 {
   margin: 22px 0 8px;
-  font-size: 1rem;
+  font-size: var(--fs-lg);
 }
 
 .detail-empty p {
   max-width: 260px;
   color: var(--muted);
-  font-size: 0.76rem;
+  font-size: var(--fs-sm);
   line-height: 1.6;
 }
 
@@ -718,14 +743,14 @@ button {
   margin: 24px 0 8px;
   overflow-wrap: anywhere;
   font-family: var(--mono);
-  font-size: 1.02rem;
-  font-weight: 590;
+  font-size: var(--fs-lg);
+  font-weight: var(--weight-medium);
 }
 
 .detail-status {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
 }
 
 .explanation,
@@ -733,7 +758,7 @@ button {
   margin-top: 24px;
   padding: 17px;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: rgba(255, 255, 255, 0.025);
 }
 
@@ -746,8 +771,8 @@ button {
 .recommendation span {
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.62rem;
-  letter-spacing: 0.09em;
+  font-size: var(--fs-3xs);
+  letter-spacing: var(--tracking-caps);
   text-transform: uppercase;
 }
 
@@ -755,7 +780,7 @@ button {
 .recommendation p {
   margin: 9px 0 0;
   color: #c3c7c2;
-  font-size: 0.76rem;
+  font-size: var(--fs-sm);
   line-height: 1.65;
 }
 
@@ -763,7 +788,7 @@ button {
   margin-top: 16px;
   overflow: hidden;
   border: 1px solid var(--border);
-  border-radius: 12px;
+  border-radius: var(--radius-md);
   background: #080a09;
 }
 
@@ -776,7 +801,7 @@ button {
   color: #6f756f;
   border-bottom: 1px solid var(--border);
   font-family: var(--mono);
-  font-size: 0.62rem;
+  font-size: var(--fs-3xs);
 }
 
 .text-button,
@@ -795,7 +820,7 @@ button {
   overflow: auto;
   color: #c7ccc6;
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--fs-2xs);
   line-height: 1.58;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
@@ -804,14 +829,14 @@ button {
 .detail-source {
   margin: 0 0 6px;
   color: var(--muted);
-  font-size: 0.66rem;
+  font-size: var(--fs-2xs);
   line-height: 1.5;
   overflow-wrap: anywhere;
 }
 
 .detail-source code {
   font-family: var(--mono);
-  font-size: 0.63rem;
+  font-size: var(--fs-3xs);
 }
 
 .diff-line {
@@ -849,7 +874,7 @@ button {
   border-top: 1px solid rgba(243, 201, 105, 0.28);
   color: var(--yellow);
   font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: var(--fs-2xs);
   line-height: 1.5;
   white-space: pre-wrap;
 }
@@ -861,7 +886,7 @@ button {
 .git-panel {
   margin-top: 12px;
   border: 1px solid var(--border);
-  border-radius: 14px;
+  border-radius: var(--radius-md);
   background: var(--panel);
 }
 
@@ -883,7 +908,7 @@ button {
 .git-panel summary::before {
   color: var(--muted);
   content: "▸";
-  font-size: 0.7rem;
+  font-size: var(--fs-xs);
 }
 
 .git-panel details[open] summary::before {
@@ -891,15 +916,15 @@ button {
 }
 
 .git-summary-label {
-  font-size: 0.8rem;
-  font-weight: 600;
+  font-size: var(--fs-md);
+  font-weight: var(--weight-semibold);
 }
 
 .git-summary-hint {
   margin-left: auto;
   color: var(--muted);
   font-family: var(--mono);
-  font-size: 0.66rem;
+  font-size: var(--fs-2xs);
 }
 
 .git-layout {
@@ -912,8 +937,8 @@ button {
 .git-layout h3 {
   margin-bottom: 13px;
   color: var(--muted);
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: var(--fs-xs);
+  font-weight: var(--weight-semibold);
 }
 
 .git-changes,
@@ -931,7 +956,7 @@ button {
   min-height: 49px;
   padding: 9px 12px;
   border: 1px solid var(--border);
-  border-radius: 10px;
+  border-radius: var(--radius-sm);
   background: rgba(255, 255, 255, 0.022);
 }
 
@@ -954,14 +979,14 @@ button {
 
 .git-clean strong,
 .commit strong {
-  font-size: 0.72rem;
+  font-size: var(--fs-xs);
 }
 
 .git-clean small,
 .commit small {
   margin-top: 3px;
   color: var(--muted);
-  font-size: 0.63rem;
+  font-size: var(--fs-3xs);
 }
 
 .git-row code,
@@ -969,14 +994,14 @@ button {
   flex: 0 0 auto;
   color: var(--green);
   font-family: var(--mono);
-  font-size: 0.64rem;
+  font-size: var(--fs-2xs);
 }
 
 .git-row span {
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: var(--mono);
-  font-size: 0.68rem;
+  font-size: var(--fs-2xs);
   white-space: nowrap;
 }
 
@@ -992,7 +1017,7 @@ button {
 
 .muted {
   color: var(--muted);
-  font-size: 0.75rem;
+  font-size: var(--fs-sm);
 }
 
 dialog {
@@ -1001,7 +1026,7 @@ dialog {
   padding: 0;
   color: var(--text);
   border: 1px solid var(--border-strong);
-  border-radius: 16px;
+  border-radius: var(--radius-lg);
   background: #101312;
   box-shadow: 0 40px 120px rgba(0, 0, 0, 0.75);
 }
@@ -1022,9 +1047,9 @@ dialog::backdrop {
   height: 36px;
   place-items: center;
   border: 1px solid var(--border);
-  border-radius: 9px;
+  border-radius: var(--radius-xs);
   color: var(--text);
-  font-size: 1.4rem;
+  font-size: var(--fs-2xl);
 }
 
 #health-output {
