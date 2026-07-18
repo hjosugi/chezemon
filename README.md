@@ -21,6 +21,17 @@ Requirements:
 - chezmoi initialized for the current user
 - Git when the chezmoi source directory is a Git repository
 
+Download a binary from [Releases](https://github.com/hjosugi/chezemon/releases),
+verify it, and run it:
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+chmod +x chezemon-linux-amd64
+./chezemon-linux-amd64 --open
+```
+
+Or build from source:
+
 ```bash
 git clone https://github.com/hjosugi/chezemon.git
 cd chezemon
@@ -33,6 +44,17 @@ does not open automatically, open the printed URL yourself.
 Windows, macOS, and Linux are supported. The UI is embedded in a single Go
 binary; Electron, Node.js, Python, and platform-specific webview runtimes are
 not required.
+
+### Options
+
+| Flag | Default | Meaning |
+| --- | --- | --- |
+| `--listen` | `127.0.0.1:0` | Address to listen on. Must be loopback; anything else exits 2. |
+| `--open` | `false` | Open the printed URL in the default browser. |
+| `--snapshot` | `false` | Print one JSON snapshot to stdout and exit. |
+| `--timeout` | `3m` | Limit for a single chezmoi operation. |
+| `--debug` | `false` | Log each request path at debug level. |
+| `--version` | `false` | Print the build version, commit, and platform, then exit. |
 
 ## What problem does it solve?
 
@@ -53,9 +75,9 @@ Chezemon joins those layers into one risk-ranked review queue. It:
 - puts files changed on both sides before ordinary pending changes;
 - identifies the current phase and the single safest next move;
 - shows the remaining workflow as clear, current, or queued;
-- previews one file diff at a time;
-- separates scripts from file changes;
-- masks likely-sensitive diffs until explicitly revealed;
+- previews one colorized file diff at a time, truncated past 256 KiB;
+- separates scripts from file changes, naming the source script and when it runs;
+- masks sensitive diffs until explicitly revealed;
 - shows source Git state, upstream position, and recent commits.
 
 ## Recommended workflow
@@ -90,12 +112,16 @@ without duplicating chezmoi logic.
 
 ## Safety
 
-- Read-only by default
-- Loopback-only HTTP listener
+- Read-only: no code path writes to your dotfiles or source repository
+- Loopback-only HTTP listener; a non-loopback `--listen` address exits 2
+- Non-loopback `Host` headers are rejected with 403, so a hostile page cannot
+  reach the API by pointing its own domain at 127.0.0.1 (DNS rebinding)
+- `GET`-only routes; any other method returns 405
 - No shell command strings
-- Serialized chezmoi operations
 - Built-in diff implementation
-- Sensitive diff masking
+- Sensitive diff masking, from chezmoi's own encrypted list plus a filename
+  heuristic
+- Diffs restricted to paths already in the review queue
 - No telemetry or external file upload
 - Restrictive browser content security policy
 
@@ -122,9 +148,10 @@ go build ./cmd/chezemon
 
 The application has no third-party Go or browser runtime dependencies.
 
-Every change is tested and compiled in CI on Windows, macOS, and Linux. The
-codebase is also cross-built locally for amd64 and arm64 on all three operating
-systems.
+Every change is tested under the race detector and compiled in CI on Windows,
+macOS, and Linux, with golangci-lint as a separate job. Release archives are
+cross-built for amd64 and arm64 by the release workflow, which refuses to
+publish if the binaries are not stamped with the tag being released.
 
 ## Project documents
 

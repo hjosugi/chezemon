@@ -21,6 +21,17 @@ Chezemonは、[chezmoi](https://www.chezmoi.io/)の状態を分かりやすく�
 - 現在のユーザーで初期化済みのchezmoi
 - chezmoi sourceをGit管理している場合はGit
 
+[Releases](https://github.com/hjosugi/chezemon/releases)からバイナリを
+ダウンロードし、検証して実行します。
+
+```bash
+sha256sum -c SHA256SUMS --ignore-missing
+chmod +x chezemon-linux-amd64
+./chezemon-linux-amd64 --open
+```
+
+ソースからビルドする場合：
+
 ```bash
 git clone https://github.com/hjosugi/chezemon.git
 cd chezemon
@@ -32,6 +43,17 @@ go run ./cmd/chezemon --open
 
 Windows、macOS、Linuxに対応します。UIは単一のGoバイナリへ埋め込まれており、
 Electron、Node.js、Python、OS固有のWebView runtimeは必要ありません。
+
+### オプション
+
+| フラグ | 既定値 | 説明 |
+| --- | --- | --- |
+| `--listen` | `127.0.0.1:0` | 待ち受けアドレス。loopback以外は終了コード2で拒否。 |
+| `--open` | `false` | 表示したURLを既定のブラウザで開く。 |
+| `--snapshot` | `false` | JSONスナップショットを1回標準出力へ出して終了。 |
+| `--timeout` | `3m` | chezmoi処理1回あたりの上限時間。 |
+| `--debug` | `false` | リクエストのパスをdebugレベルで記録。 |
+| `--version` | `false` | ビルドのバージョン・コミット・プラットフォームを表示して終了。 |
 
 ## 何を解決するもの？
 
@@ -51,10 +73,10 @@ Chezemonは4層を一つのリスク順レビューキューへ統合します�
 - chezmoiの2文字statusを普通の言葉で説明
 - 両側で変わったファイルを通常の適用候補より優先
 - 現在フェーズと「次にやるべき一手」を表示
-- 完了・現在・待機中の残りフローを表示
-- 1ファイルずつdiffを確認
-- スクリプトを通常のファイル変更と分離
-- 秘密情報を含みそうなdiffを明示操作までマスク
+- 残りのフローを「対応不要・現在・待機中」で表示（未着手を完了とは表示しない）
+- 1ファイルずつ色分けdiffを確認（256 KiBを超える分は切り詰め）
+- スクリプトを通常のファイル変更と分離し、source側の名前と実行タイミングを表示
+- 秘密情報を含むdiffを明示操作までマスク
 - source Git、upstream位置、最近のcommitを表示
 
 ## 推奨フロー
@@ -88,12 +110,16 @@ JSONにはmetadataとpathが含まれますが、ファイル内容やdiff内容
 
 ## 安全設計
 
-- デフォルトは読み取り専用
-- HTTP listenerはloopback限定
+- 読み取り専用: dotfilesとsource repositoryへ書き込む経路は存在しない
+- HTTP listenerはloopback限定。loopback以外の`--listen`は終了コード2で拒否
+- loopback以外の`Host`ヘッダを403で拒否。悪意あるページが自ドメインを
+  127.0.0.1へ向けてAPIへ到達すること（DNS rebinding）を防ぐ
+- ルートは`GET`のみ。それ以外のメソッドは405
 - shell文字列を組み立てない
-- chezmoi処理を直列化
 - chezmoi内蔵diffを使用
-- 秘密diffをデフォルトでマスク
+- 秘密diffをデフォルトでマスク。判定はchezmoi自身の暗号化一覧とファイル名の
+  ヒューリスティックの2系統
+- diffはレビューキューにあるパスに限定
 - telemetryや外部へのファイル送信なし
 - 厳格なContent Security Policy
 
@@ -119,8 +145,9 @@ go build ./cmd/chezemon
 
 第三者製のGo packageやbrowser runtimeへの依存はありません。
 
-CIではWindows、macOS、Linuxでtestとbuildを実行します。また、3 OSすべての
-amd64/arm64向けcross buildも確認しています。
+CIではWindows、macOS、Linuxでrace detector付きtestとbuildを実行し、
+golangci-lintを別jobで実行します。リリース用のamd64/arm64バイナリは
+release workflowがcross buildし、タグと一致する刻印が無ければ公開を中止します。
 
 ## 関連ドキュメント
 

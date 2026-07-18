@@ -16,11 +16,10 @@ import (
 
 type Server struct {
 	service *state.Service
-	logger  *slog.Logger
 }
 
 func New(service *state.Service, logger *slog.Logger) http.Handler {
-	server := &Server{service: service, logger: logger}
+	server := &Server{service: service}
 	mux := http.NewServeMux()
 	mux.HandleFunc("GET /api/healthz", server.health)
 	mux.HandleFunc("GET /api/snapshot", server.snapshot)

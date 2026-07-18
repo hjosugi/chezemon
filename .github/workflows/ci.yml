@@ -28,10 +28,25 @@ jobs:
         with:
           go-version-file: go.mod
           cache: false
+      # Snapshot gathers its chezmoi and git calls concurrently, so the race
+      # detector is doing real work here rather than guarding hypotheticals.
       - name: Test
-        run: go test ./...
+        run: go test -race ./...
       - name: Vet
         run: go vet ./...
       - name: Build
         shell: bash
         run: go build -trimpath -o "${{ matrix.artifact }}" ./cmd/chezemon
+
+  lint:
+    name: lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: go.mod
+          cache: false
+      - uses: golangci/golangci-lint-action@v9
+        with:
+          version: latest
