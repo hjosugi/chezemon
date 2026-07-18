@@ -63,7 +63,8 @@ function riskIcon(risk) {
 }
 
 function statusCopy(entry) {
-  return `${entry.code.replaceAll(" ", "·")} · ${entry.label}`;
+  const base = `${entry.code.replaceAll(" ", "·")} · ${entry.label}`;
+  return entry.scriptTiming ? `${base} · runs ${entry.scriptTiming}` : base;
 }
 
 function visibleEntries() {
@@ -121,6 +122,8 @@ function selectEntry(entry) {
     </div>
     <h2>${escapeHTML(entry.displayPath)}</h2>
     <p class="detail-status">${escapeHTML(statusCopy(entry))}</p>
+    ${entry.sourcePath ? `<p class="detail-source">source: <code>${escapeHTML(entry.sourcePath)}</code></p>` : ""}
+    ${entry.sensitiveReason ? `<p class="detail-source">masked because ${escapeHTML(entry.sensitiveReason)}</p>` : ""}
     <div class="explanation">
       <span>What this means</span>
       <p>${escapeHTML(entry.explanation)}</p>
@@ -196,10 +199,15 @@ function renderWorkflow(workflow) {
       ? `Stage ${workflow.currentStep}: ${workflow.steps[workflow.currentStep - 1].title}`
       : "Everything visible is synchronized";
   $("#workflow-summary").textContent = workflow.summary;
-  $("#workflow-completed").textContent = workflow.completed;
+  $("#workflow-clear").textContent = workflow.clear;
   $("#workflow-total").textContent = workflow.total;
-  const progress = workflow.total ? Math.round((workflow.completed / workflow.total) * 100) : 100;
-  $("#workflow-progress-bar").style.width = `${progress}%`;
+  $("#workflow-outstanding").textContent = workflow.outstanding
+    ? `${workflow.outstanding} item${workflow.outstanding === 1 ? "" : "s"} outstanding`
+    : "Nothing outstanding";
+  // The bar tracks stages with nothing left in them. Chezemon keeps no
+  // history, so this is a picture of the current state, not of work done.
+  const cleared = workflow.total ? Math.round((workflow.clear / workflow.total) * 100) : 100;
+  $("#workflow-progress-bar").style.width = `${cleared}%`;
 
   const container = $("#workflow-steps");
   container.innerHTML = workflow.steps
@@ -207,13 +215,13 @@ function renderWorkflow(workflow) {
       (step) => `
         <button class="workflow-step ${escapeHTML(step.state)}"
                 data-filter="${escapeHTML(step.queueFilter || "")}"
-                ${step.state === "done" ? "disabled" : ""}>
-          <span class="step-marker">${step.state === "done" ? "✓" : step.number}</span>
+                ${step.state === "clear" ? "disabled" : ""}>
+          <span class="step-marker">${step.state === "clear" ? "–" : step.number}</span>
           <span class="step-copy">
             <strong>${escapeHTML(step.title)}</strong>
             <small>${escapeHTML(step.description)}</small>
           </span>
-          <span class="step-state">${step.state === "current" ? "Now" : step.state === "queued" ? "Later" : "Clear"}</span>
+          <span class="step-state">${step.state === "current" ? "Now" : step.state === "queued" ? "Later" : "Nothing to do"}</span>
           ${step.count ? `<span class="step-count">${step.count}</span>` : ""}
         </button>`,
     )

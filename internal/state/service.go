@@ -34,28 +34,32 @@ func NewService(runner command.Runner, timeout time.Duration) *Service {
 	}
 }
 
+// cachedSnapshot returns the cached snapshot while it is still fresh.
+func (s *Service) cachedSnapshot() (Snapshot, bool) {
+	s.cacheMu.RLock()
+	defer s.cacheMu.RUnlock()
+	if s.cached != nil && time.Since(s.cachedAt) < s.cacheTTL {
+		return *s.cached, true
+	}
+	return Snapshot{}, false
+}
+
 func (s *Service) Snapshot(ctx context.Context, force bool) (Snapshot, error) {
 	if !force {
-		s.cacheMu.RLock()
-		if s.cached != nil && time.Since(s.cachedAt) < s.cacheTTL {
-			snapshot := *s.cached
-			s.cacheMu.RUnlock()
+		if snapshot, ok := s.cachedSnapshot(); ok {
 			return snapshot, nil
 		}
-		s.cacheMu.RUnlock()
 	}
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	// Re-check after taking the lock: a concurrent caller may have refreshed
+	// the cache while this one was waiting.
 	if !force {
-		s.cacheMu.RLock()
-		if s.cached != nil && time.Since(s.cachedAt) < s.cacheTTL {
-			snapshot := *s.cached
-			s.cacheMu.RUnlock()
+		if snapshot, ok := s.cachedSnapshot(); ok {
 			return snapshot, nil
 		}
-		s.cacheMu.RUnlock()
 	}
 
 	start := time.Now()
@@ -84,8 +88,9 @@ func (s *Service) Snapshot(ctx context.Context, force bool) (Snapshot, error) {
 		return Snapshot{}, fmt.Errorf("read chezmoi status: %w", err)
 	}
 
-	entries := parseStatus(string(statusOutput), cfg.DestDir)
+	entries := parseStatus(string(statusOutput), cfg.DestDir, loadSourceMetadata(ctx, s.runner))
 	gitState := loadGit(ctx, s.runner, cfg.SourceDir)
+	counts := countEntries(entries)
 	snapshot := Snapshot{
 		GeneratedAt:    time.Now(),
 		DurationMS:     time.Since(start).Milliseconds(),
@@ -94,10 +99,10 @@ func (s *Service) Snapshot(ctx context.Context, force bool) (Snapshot, error) {
 		DestDir:        cfg.DestDir,
 		ReadOnly:       true,
 		Entries:        entries,
-		Counts:         countEntries(entries),
+		Counts:         counts,
 		Git:            gitState,
-		Workflow:       buildWorkflow(entries, gitState),
-		Notices:        buildNotices(entries, gitState),
+		Workflow:       buildWorkflow(counts, gitState),
+		Notices:        buildNotices(counts, gitState),
 	}
 
 	s.cacheMu.Lock()
@@ -171,8 +176,7 @@ func findEntry(entries []Entry, target string) (Entry, bool) {
 	return Entry{}, false
 }
 
-func buildNotices(entries []Entry, git GitState) []Notice {
-	counts := countEntries(entries)
+func buildNotices(counts Counts, git GitState) []Notice {
 	var notices []Notice
 	if counts.Critical > 0 {
 		notices = append(notices, Notice{
@@ -188,7 +192,7 @@ func buildNotices(entries []Entry, git GitState) []Notice {
 			Message: fmt.Sprintf("%d script(s) are pending. File diffs do not describe every side effect a script may have.", counts.Scripts),
 		})
 	}
-	if git.Available && git.Clean && len(entries) > 0 {
+	if git.Available && git.Clean && counts.Total > 0 {
 		notices = append(notices, Notice{
 			Level:   "info",
 			Title:   "Git is clean, but home is not synchronized",
